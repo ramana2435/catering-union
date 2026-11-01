@@ -135,6 +135,75 @@ export async function getProfileById(userId: string): Promise<Profile | null> {
   return data
 }
 
+/**
+ * Create a new profile (used during signup)
+ * 
+ * @param data - Profile data including id, full_name, phone_number, role
+ * @returns Promise<Profile | null>
+ * 
+ * @example
+ * ```typescript
+ * const profile = await createProfile({
+ *   id: userId,
+ *   full_name: 'John Doe',
+ *   phone_number: '+1234567890',
+ *   role: 'worker'
+ * })
+ * ```
+ * 
+ * RLS: Users can create profile with role IN ('worker', 'provider') only
+ */
+export async function createProfile(data: ProfileInsert): Promise<Profile | null> {
+  const { data: profile, error } = await supabase
+    .from('profiles')
+    .insert(data)
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error creating profile:', error)
+    return null
+  }
+
+  return profile
+}
+
+/**
+ * Update a profile
+ * 
+ * @param userId - The UUID of the user whose profile to update
+ * @param updates - Partial profile updates (full_name, phone_number, preferred_language)
+ * @returns Promise<Profile | null>
+ * 
+ * @example
+ * ```typescript
+ * const updated = await updateProfile(userId, {
+ *   full_name: 'John Smith',
+ *   phone_number: '+9876543210'
+ * })
+ * ```
+ * 
+ * RLS: Users can update their own profile (id = auth.uid()), cannot change role or account_status
+ */
+export async function updateProfile(
+  userId: string,
+  updates: Pick<Database['public']['Tables']['profiles']['Update'], 'full_name' | 'phone_number' | 'preferred_language'>
+): Promise<Profile | null> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .update(updates)
+    .eq('id', userId)
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error updating profile:', error)
+    return null
+  }
+
+  return data
+}
+
 // ============================================================================
 // Catering Job Query Helpers
 // ============================================================================
