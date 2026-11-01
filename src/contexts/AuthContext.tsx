@@ -54,6 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
   const isMounted = useRef(true)
   const loadingProfileRef = useRef(false)
+  const initialSessionProcessed = useRef(false)
 
   // Derive role from profile
   const role = profile?.role as UserRole | null
@@ -79,6 +80,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (error.code === 'PGRST116') {
           console.warn('Profile not found, signing out user')
           await supabase.auth.signOut()
+          // Check if still mounted before updating state
+          if (!isMounted.current) return
           setUser(null)
           setProfile(null)
         }
@@ -87,7 +90,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       setProfile(data)
     } finally {
-      loadingProfileRef.current = false
+      if (isMounted.current) {
+        loadingProfileRef.current = false
+      }
     }
   }
 
@@ -99,6 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!isMounted.current) return
 
+      initialSessionProcessed.current = true
       if (session?.user) {
         setUser(session.user)
         loadProfile(session.user.id).finally(() => {
@@ -121,6 +127,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(null)
           setProfile(null)
         } else if (event === 'INITIAL_SESSION') {
+          // Skip if we already processed the initial session via getSession()
+          if (initialSessionProcessed.current) {
+            setLoading(false)
+            return
+          }
           if (session?.user) {
             setUser(session.user)
             await loadProfile(session.user.id)
