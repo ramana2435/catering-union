@@ -1,12 +1,18 @@
 import { BrowserRouter } from 'react-router-dom'
+import { I18nProvider } from './lib/i18n'
+import ErrorBoundary from './components/common/ErrorBoundary'
+import OfflineIndicator from './components/common/OfflineIndicator'
 import AppRoutes from './routes'
 
-function App() {
+export default function App() {
   return (
-    <BrowserRouter>
-      <AppRoutes />
-    </BrowserRouter>
+    <ErrorBoundary>
+      <I18nProvider>
+        <BrowserRouter>
+          <OfflineIndicator />
+          <AppRoutes />
+        </BrowserRouter>
+      </I18nProvider>
+    </ErrorBoundary>
   )
 }
-
-export default App

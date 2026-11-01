@@ -1,34 +1,49 @@
-import { cn } from '@/utils'
+/**
+ * Reusable Error Message Component
+ */
+
+import { AppError } from '@/lib/errors'
+import Button from './Button'
 
 interface ErrorMessageProps {
-  message: string
-  className?: string
+  error: string | AppError
   onRetry?: () => void
+  className?: string
 }
 
-export default function ErrorMessage({ message, className, onRetry }: ErrorMessageProps) {
+export default function ErrorMessage({ error, onRetry, className = '' }: ErrorMessageProps) {
+  const message = typeof error === 'string' ? error : error.message
+  const canRetry = typeof error === 'object' && error.retry === true && onRetry
+
   return (
-    <div
-      className={cn('rounded-lg bg-red-50 border border-red-200 p-4', className)}
-      role="alert"
-    >
+    <div className={`rounded-lg border border-red-200 bg-red-50 p-4 ${className}`}>
       <div className="flex items-start gap-3">
-        <svg className="h-5 w-5 text-red-500 mt-0.5 shrink-0" viewBox="0 0 20 20" fill="currentColor">
-          <path
-            fillRule="evenodd"
-            d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z"
-            clipRule="evenodd"
-          />
-        </svg>
+        <div className="flex-shrink-0">
+          <svg
+            className="h-5 w-5 text-red-600"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+        </div>
         <div className="flex-1">
-          <p className="text-sm font-medium text-red-800">{message}</p>
-          {onRetry && (
-            <button
+          <p className="text-sm text-red-700">{message}</p>
+          {canRetry && (
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={onRetry}
-              className="mt-2 text-sm font-medium text-red-700 underline hover:text-red-900"
+              className="mt-2 text-red-700 hover:text-red-800"
             >
-              Try again
-            </button>
+              Try Again
+            </Button>
           )}
         </div>
       </div>

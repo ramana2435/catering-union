@@ -1,12 +1,15 @@
 import { useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import Button from '@/components/common/Button'
+import LanguageSelector from '@/components/common/LanguageSelector'
 import { useAuth } from '@/contexts/AuthContext'
+import { useTranslation } from '@/lib/i18n'
 import { getInitials } from '@/utils'
 
 export default function Header() {
   const navigate = useNavigate()
   const { isAuthenticated, profile, signOut } = useAuth()
+  const { t } = useTranslation()
   const [menuOpen, setMenuOpen] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
 
@@ -14,22 +17,22 @@ export default function Header() {
   const getNavLinks = () => {
     if (!isAuthenticated || !profile) {
       return [
-        { to: '/jobs', label: 'Find Jobs' },
-        { to: '/workers', label: 'Find Workers' },
-        { to: '/providers', label: 'Providers' },
+        { to: '/jobs', label: t('nav.jobs') },
+        { to: '/workers', label: t('nav.workers') },
+        { to: '/providers', label: t('nav.providers') },
       ]
     }
 
     const links: Array<{ to: string; label: string }> = []
 
     if (profile.role === 'worker') {
-      links.push({ to: '/jobs', label: 'Find Jobs' })
+      links.push({ to: '/jobs', label: t('nav.jobs') })
     } else if (profile.role === 'provider') {
-      links.push({ to: '/workers', label: 'Find Workers' })
+      links.push({ to: '/workers', label: t('nav.workers') })
     }
 
     if (profile.role === 'admin') {
-      links.push({ to: '/admin', label: 'Admin Panel' })
+      links.push({ to: '/admin', label: t('nav.admin') })
     }
 
     return links
@@ -53,7 +56,7 @@ export default function Header() {
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2">
             <span className="text-2xl font-bold text-brand-600">🍽️</span>
-            <span className="text-xl font-bold text-gray-900">Catering Union</span>
+            <span className="text-xl font-bold text-gray-900">{t('header.appName')}</span>
           </Link>
 
           {/* Desktop nav */}
@@ -75,25 +78,26 @@ export default function Header() {
 
           {/* Auth section */}
           <div className="hidden md:flex items-center gap-3">
+            <LanguageSelector />
             {!isAuthenticated ? (
               <>
                 <Link to="/login">
                   <Button variant="ghost" size="sm">
-                    Sign In
+                    {t('header.signIn')}
                   </Button>
                 </Link>
                 <Link to="/signup">
-                  <Button size="sm">Get Started</Button>
+                  <Button size="sm">{t('header.getStarted')}</Button>
                 </Link>
               </>
             ) : (
               <>
-                <span className="text-sm text-gray-600">Hi, {firstName}</span>
+                <span className="text-sm text-gray-600">{t('header.hi', { name: firstName })}</span>
                 <div className="relative">
                   <button
                     onClick={() => setUserMenuOpen(!userMenuOpen)}
                     className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-100 transition-colors"
-                    aria-label="User menu"
+                    aria-label={t('header.userMenu')}
                     aria-expanded={userMenuOpen}
                   >
                     {profile?.profile_image_url ? (
@@ -131,21 +135,21 @@ export default function Header() {
                           className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                           onClick={() => setUserMenuOpen(false)}
                         >
-                          Profile
+                          {t('nav.profile')}
                         </Link>
                         <Link
                           to="/dashboard"
                           className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                           onClick={() => setUserMenuOpen(false)}
                         >
-                          Dashboard
+                          {t('nav.dashboard')}
                         </Link>
                         <hr className="my-2 border-gray-200" />
                         <button
                           onClick={handleLogout}
                           className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
                         >
-                          Logout
+                          {t('header.logout')}
                         </button>
                       </div>
                     </>
@@ -159,7 +163,7 @@ export default function Header() {
           <button
             className="md:hidden p-2 rounded-lg text-gray-600 hover:bg-gray-100"
             onClick={() => setMenuOpen(!menuOpen)}
-            aria-label="Toggle menu"
+            aria-label={t('header.toggleMenu')}
             aria-expanded={menuOpen}
           >
             <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -187,16 +191,17 @@ export default function Header() {
             </NavLink>
           ))}
           <div className="pt-3 border-t border-gray-100">
+            <LanguageSelector />
             {!isAuthenticated ? (
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-2 mt-3">
                 <Link to="/login" onClick={() => setMenuOpen(false)}>
                   <Button variant="ghost" size="sm" className="w-full">
-                    Sign In
+                    {t('header.signIn')}
                   </Button>
                 </Link>
                 <Link to="/signup" onClick={() => setMenuOpen(false)}>
                   <Button size="sm" className="w-full">
-                    Get Started
+                    {t('header.getStarted')}
                   </Button>
                 </Link>
               </div>
@@ -224,20 +229,20 @@ export default function Header() {
                   className="block px-2 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded"
                   onClick={() => setMenuOpen(false)}
                 >
-                  Profile
+                  {t('nav.profile')}
                 </Link>
                 <Link
                   to="/dashboard"
                   className="block px-2 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded"
                   onClick={() => setMenuOpen(false)}
                 >
-                  Dashboard
+                  {t('nav.dashboard')}
                 </Link>
                 <button
                   onClick={handleLogout}
                   className="block w-full text-left px-2 py-2 text-sm text-red-600 hover:bg-gray-100 rounded"
                 >
-                  Logout
+                  {t('header.logout')}
                 </button>
               </div>
             )}

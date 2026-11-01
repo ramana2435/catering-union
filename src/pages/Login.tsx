@@ -3,10 +3,12 @@ import { Link, useNavigate } from 'react-router-dom'
 import Button from '@/components/common/Button'
 import Input from '@/components/common/Input'
 import { useAuth } from '@/contexts/AuthContext'
+import { useTranslation } from '@/lib/i18n'
 
 export default function Login() {
   const navigate = useNavigate()
   const { signIn, role, loading: authLoading } = useAuth()
+  const { t } = useTranslation()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -33,15 +35,15 @@ export default function Login() {
     setPasswordError(null)
 
     if (!email.trim()) {
-      setEmailError('Email is required')
+      setEmailError(t('validation.emailRequired'))
       isValid = false
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setEmailError('Invalid email format')
+      setEmailError(t('validation.emailInvalid'))
       isValid = false
     }
 
     if (!password) {
-      setPasswordError('Password is required')
+      setPasswordError(t('validation.passwordRequired'))
       isValid = false
     }
 
@@ -62,14 +64,14 @@ export default function Login() {
       if (!result.success) {
         // Handle specific errors
         if (result.error?.includes('suspended')) {
-          setError('Your account has been suspended. Please contact support.')
+          setError(t('errors.accountSuspended'))
         } else {
-          setError(result.error || 'Failed to sign in. Please try again.')
+          setError(result.error || t('errors.signInFailed'))
         }
       }
       // On success, the useEffect will handle redirect once role is loaded
     } catch (err) {
-      setError('An unexpected error occurred. Please try again.')
+      setError(t('errors.unexpected'))
     } finally {
       setLoading(false)
     }
@@ -77,11 +79,11 @@ export default function Login() {
 
   return (
     <>
-      <h2 className="text-2xl font-bold text-gray-900 mb-2">Sign in to your account</h2>
+      <h2 className="text-2xl font-bold text-gray-900 mb-2">{t('auth.signInTitle')}</h2>
       <p className="text-sm text-gray-500 mb-8">
-        Don&#39;t have an account?{' '}
+        {t('auth.noAccount')}{' '}
         <Link to="/signup" className="text-brand-600 font-medium hover:underline">
-          Sign up
+          {t('auth.signUpLink')}
         </Link>
       </p>
 
@@ -94,9 +96,9 @@ export default function Login() {
 
       <form className="space-y-5" onSubmit={handleSubmit}>
         <Input
-          label="Email address"
+          label={t('auth.email')}
           type="email"
-          placeholder="you@example.com"
+          placeholder={t('auth.emailPlaceholder')}
           autoComplete="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
@@ -106,7 +108,7 @@ export default function Login() {
 
         <div className="relative">
           <Input
-            label="Password"
+            label={t('auth.password')}
             type={showPassword ? 'text' : 'password'}
             placeholder="••••••••"
             autoComplete="current-password"
@@ -119,7 +121,7 @@ export default function Login() {
             type="button"
             onClick={() => setShowPassword(!showPassword)}
             className="absolute right-3 top-[38px] text-gray-500 hover:text-gray-700 focus:outline-none"
-            aria-label={showPassword ? 'Hide password' : 'Show password'}
+            aria-label={showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
           >
             {showPassword ? (
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -157,15 +159,15 @@ export default function Login() {
               checked={rememberMe}
               onChange={(e) => setRememberMe(e.target.checked)}
             />
-            Remember me
+            {t('auth.rememberMe')}
           </label>
           <Link to="/" className="text-sm text-brand-600 font-medium hover:underline">
-            Forgot password?
+            {t('auth.forgotPassword')}
           </Link>
         </div>
 
         <Button type="submit" className="w-full" isLoading={loading}>
-          Sign In
+          {t('auth.signInButton')}
         </Button>
       </form>
     </>

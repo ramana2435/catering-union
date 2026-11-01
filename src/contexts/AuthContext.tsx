@@ -193,6 +193,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
 
+      // Email confirmation is disabled - user is immediately logged in
       // Update local state
       setUser(authData.user)
       setProfile(profileData)

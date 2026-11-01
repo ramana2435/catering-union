@@ -366,27 +366,219 @@ export async function updateCateringJob(
 }
 
 // ============================================================================
-// Job Confirmation Helpers
+// Realtime Subscription Helpers
 // ============================================================================
 
 /**
- * Confirm a job for the current worker
+ * Subscribe to changes in a specific job
  * 
- * @param jobId - The UUID of the job to confirm
- * @param workerId - The UUID of the worker (must match auth.uid())
- * @returns Promise<JobConfirmation | null>
+ * @param jobId - The UUID of the job to watch
+ * @param onUpdate - Callback function called when the job is updated
+ * @returns Unsubscribe function
  * 
  * @example
  * ```typescript
- * const confirmation = await confirmJob(jobId, currentUserId)
- * if (confirmation) {
- *   console.log('Job confirmed successfully!')
+ * const unsubscribe = subscribeToJob(jobId, (updatedJob) => {
+ *   console.log('Job updated:', updatedJob)
+ *   setJob(updatedJob)
+ * })
+ * 
+ * // Later: clean up
+ * unsubscribe()
+ * ```
+ */
+export function subscribeToJob(
+  jobId: string,
+  onUpdate: (job: CateringJob) => void
+): () => void {
+  const channel = supabase
+    .channel(`job:${jobId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'catering_jobs',
+        filter: `id=eq.${jobId}`,
+      },
+      (payload) => {
+        onUpdate(payload.new as CateringJob)
+      }
+    )
+    .subscribe()
+
+  return () => {
+    supabase.removeChannel(channel)
+  }
+}
+
+/**
+ * Subscribe to confirmation changes for a specific job
+ * 
+ * @param jobId - The UUID of the job to watch
+ * @param onInsert - Callback when a new confirmation is added
+ * @param onUpdate - Callback when a confirmation is updated (e.g., cancelled)
+ * @returns Unsubscribe function
+ * 
+ * @example
+ * ```typescript
+ * const unsubscribe = subscribeToJobConfirmations(
+ *   jobId,
+ *   (newConfirmation) => {
+ *     console.log('New worker confirmed!')
+ *     loadConfirmations()
+ *   },
+ *   (updatedConfirmation) => {
+ *     console.log('Confirmation updated')
+ *     loadConfirmations()
+ *   }
+ * )
+ * ```
+ */
+export function subscribeToJobConfirmations(
+  jobId: string,
+  onInsert: (confirmation: JobConfirmation) => void,
+  onUpdate: (confirmation: JobConfirmation) => void
+): () => void {
+  const channel = supabase
+    .channel(`job_confirmations:${jobId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'job_confirmations',
+        filter: `job_id=eq.${jobId}`,
+      },
+      (payload) => {
+        onInsert(payload.new as JobConfirmation)
+      }
+    )
+    .on(
+      'postgres_changes',
+      {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'job_confirmations',
+        filter: `job_id=eq.${jobId}`,
+      },
+      (payload) => {
+        onUpdate(payload.new as JobConfirmation)
+      }
+    )
+    .subscribe()
+
+  return () => {
+    supabase.removeChannel(channel)
+  }
+}
+
+// ============================================================================
+// Job Confirmation Helpers
+// ============================================================================
+
+// ============================================================================
+// Atomic Confirmation Result Types
+// ============================================================================
+
+export interface ConfirmationResult {
+  success: boolean
+  code: string
+  message: string
+  confirmation_id?: string
+  confirmed_workers?: number
+  required_workers?: number
+  is_now_full?: boolean
+}
+
+/**
+ * Atomically confirm a job for the current worker with vacancy integrity
+ * 
+ * Uses a PostgreSQL function to prevent race conditions when multiple workers
+ * try to book the last vacancy simultaneously.
+ * 
+ * @param jobId - The UUID of the job to confirm
+ * @param workerId - The UUID of the worker (must match auth.uid())
+ * @returns Promise<ConfirmationResult> - Result object with success status and details
+ * 
+ * @example
+ * ```typescript
+ * const result = await confirmJobAtomic(jobId, currentUserId)
+ * if (result.success) {
+ *   console.log('Job confirmed!', result.message)
+ * } else {
+ *   console.error('Confirmation failed:', result.code, result.message)
  * }
  * ```
  * 
- * RLS: Workers can only confirm jobs for themselves (worker_id = auth.uid())
+ * Result codes:
+ * - CONFIRMED: Successfully confirmed
+ * - ALREADY_CONFIRMED: Worker already confirmed this job
+ * - JOB_FULL: No vacancies remaining
+ * - JOB_CANCELLED: Job has been cancelled
+ * - JOB_COMPLETED: Job already completed
+ * - JOB_EXPIRED: Job date has passed
+ * - JOB_NOT_FOUND: Job doesn't exist
+ * - ERROR: Unexpected error
+ */
+export async function confirmJobAtomic(jobId: string, workerId: string): Promise<ConfirmationResult> {
+  const { data, error } = await supabase.rpc('confirm_worker_for_job' as any, {
+    p_job_id: jobId,
+    p_worker_id: workerId,
+  })
+
+  if (error) {
+    console.error('Error confirming job:', error)
+    return {
+      success: false,
+      code: 'ERROR',
+      message: error.message || 'Failed to confirm job',
+    }
+  }
+
+  return (data as any) as ConfirmationResult
+}
+
+/**
+ * Cancel a worker's job confirmation
+ * 
+ * @param confirmationId - The UUID of the confirmation to cancel
+ * @param workerId - The UUID of the worker (must match auth.uid())
+ * @returns Promise<ConfirmationResult> - Result object with success status
+ * 
+ * @example
+ * ```typescript
+ * const result = await cancelConfirmationAtomic(confirmationId, workerId)
+ * if (result.success) {
+ *   console.log('Confirmation cancelled')
+ * }
+ * ```
+ */
+export async function cancelConfirmationAtomic(confirmationId: string, workerId: string): Promise<ConfirmationResult> {
+  const { data, error } = await supabase.rpc('cancel_worker_confirmation' as any, {
+    p_confirmation_id: confirmationId,
+    p_worker_id: workerId,
+  })
+
+  if (error) {
+    console.error('Error cancelling confirmation:', error)
+    return {
+      success: false,
+      code: 'ERROR',
+      message: error.message || 'Failed to cancel confirmation',
+    }
+  }
+
+  return (data as any) as ConfirmationResult
+}
+
+/**
+ * DEPRECATED: Use confirmJobAtomic instead for atomic vacancy integrity
+ * 
+ * @deprecated This function does not prevent race conditions. Use confirmJobAtomic.
  */
 export async function confirmJob(jobId: string, workerId: string): Promise<JobConfirmation | null> {
+  console.warn('confirmJob is deprecated. Use confirmJobAtomic for race-condition safety.')
   const { data, error } = await supabase
     .from('job_confirmations')
     .insert({
@@ -426,6 +618,243 @@ export async function getJobConfirmations(jobId: string): Promise<JobConfirmatio
   }
 
   return data || []
+}
+
+/**
+ * Get all jobs confirmed by a specific worker
+ * 
+ * @param workerId - The UUID of the worker
+ * @returns Promise<JobConfirmation[]> - Array of confirmations with job details
+ * 
+ * @example
+ * ```typescript
+ * const confirmations = await getWorkerConfirmations(workerId)
+ * ```
+ * 
+ * RLS: Workers can view their own confirmations
+ */
+export async function getWorkerConfirmations(workerId: string): Promise<JobConfirmation[]> {
+  const { data, error } = await supabase
+    .from('job_confirmations')
+    .select('*')
+    .eq('worker_id', workerId)
+    .eq('status', 'confirmed')
+    .order('confirmed_at', { ascending: false })
+
+  if (error) {
+    console.error('Error fetching worker confirmations:', error)
+    return []
+  }
+
+  return data || []
+}
+
+/**
+ * Get worker's attendance record for a specific job
+ * 
+ * @param jobId - The UUID of the job
+ * @param workerId - The UUID of the worker
+ * @returns Promise<WorkerAttendance | null>
+ */
+export async function getWorkerAttendanceForJob(
+  jobId: string,
+  workerId: string
+): Promise<WorkerAttendance | null> {
+  const { data, error } = await supabase
+    .from('worker_attendance')
+    .select('*')
+    .eq('job_id', jobId)
+    .eq('worker_id', workerId)
+    .single()
+
+  if (error) {
+    // Not found is expected if no attendance record yet
+    if (error.code === 'PGRST116') {
+      return null
+    }
+    console.error('Error fetching worker attendance:', error)
+    return null
+  }
+
+  return data
+}
+
+/**
+ * Update worker's own arrival status
+ * 
+ * @param jobId - The UUID of the job
+ * @param workerId - The UUID of the worker
+ * @param status - New arrival status ('getting_ready', 'on_the_way', 'arrived')
+ * @returns Promise<WorkerAttendance | null>
+ */
+export async function updateWorkerArrivalStatus(
+  jobId: string,
+  workerId: string,
+  status: 'getting_ready' | 'on_the_way' | 'arrived'
+): Promise<WorkerAttendance | null> {
+  // First check if attendance record exists
+  const existing = await getWorkerAttendanceForJob(jobId, workerId)
+
+  if (existing) {
+    // Update existing record
+    const updates: Partial<WorkerAttendanceInsert> = {
+      attendance_status: status,
+      updated_at: new Date().toISOString(),
+    }
+
+    // Set arrival_time when status becomes 'arrived'
+    if (status === 'arrived' && !existing.arrival_time) {
+      updates.arrival_time = new Date().toISOString()
+    }
+
+    const { data, error } = await supabase
+      .from('worker_attendance')
+      .update(updates)
+      .eq('id', existing.id)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Error updating attendance:', error)
+      return null
+    }
+
+    return data
+  } else {
+    // Create new attendance record
+    const newRecord: WorkerAttendanceInsert = {
+      job_id: jobId,
+      worker_id: workerId,
+      attendance_status: status,
+      arrival_time: status === 'arrived' ? new Date().toISOString() : null,
+    }
+
+    const { data, error } = await supabase
+      .from('worker_attendance')
+      .insert(newRecord)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Error creating attendance:', error)
+      return null
+    }
+
+    return data
+  }
+}
+
+/**
+ * Provider marks worker as present or absent
+ * 
+ * @param jobId - The UUID of the job
+ * @param workerId - The UUID of the worker
+ * @param status - 'present' or 'absent'
+ * @param markedBy - UUID of the provider marking attendance
+ * @returns Promise<WorkerAttendance | null>
+ */
+export async function markWorkerPresence(
+  jobId: string,
+  workerId: string,
+  status: 'present' | 'absent',
+  markedBy: string
+): Promise<WorkerAttendance | null> {
+  // Check if attendance record exists
+  const existing = await getWorkerAttendanceForJob(jobId, workerId)
+
+  if (existing) {
+    // Update existing record
+    const { data, error } = await supabase
+      .from('worker_attendance')
+      .update({
+        attendance_status: status,
+        marked_by: markedBy,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', existing.id)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Error marking presence:', error)
+      return null
+    }
+
+    return data
+  } else {
+    // Create new attendance record
+    const { data, error } = await supabase
+      .from('worker_attendance')
+      .insert({
+        job_id: jobId,
+        worker_id: workerId,
+        attendance_status: status,
+        marked_by: markedBy,
+      })
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Error creating attendance:', error)
+      return null
+    }
+
+    return data
+  }
+}
+
+/**
+ * Get all confirmations with their attendance status for a job
+ * 
+ * @param jobId - The UUID of the job
+ * @returns Promise with confirmations and attendance data
+ */
+export async function getJobConfirmationsWithAttendance(jobId: string) {
+  const confirmations = await getJobConfirmations(jobId)
+  const attendance = await getJobAttendance(jobId)
+
+  return confirmations.map((confirmation) => {
+    const workerAttendance = attendance.find(
+      (a) => a.worker_id === confirmation.worker_id
+    )
+    return {
+      ...confirmation,
+      attendance: workerAttendance || null,
+    }
+  })
+}
+
+/**
+ * Subscribe to attendance changes for a specific job
+ * 
+ * @param jobId - The UUID of the job to watch
+ * @param onUpdate - Callback when attendance is updated
+ * @returns Unsubscribe function
+ */
+export function subscribeToAttendance(
+  jobId: string,
+  onUpdate: (attendance: WorkerAttendance) => void
+): () => void {
+  const channel = supabase.channel(`attendance:${jobId}:${Date.now()}`) // Add timestamp to make unique
+  
+  channel
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'worker_attendance',
+        filter: `job_id=eq.${jobId}`,
+      },
+      (payload) => {
+        onUpdate(payload.new as WorkerAttendance)
+      }
+    )
+    .subscribe()
+
+  return () => {
+    supabase.removeChannel(channel)
+  }
 }
 
 /**
@@ -674,10 +1103,10 @@ export async function stopLocationSharing(sessionId: string): Promise<boolean> {
  * 
  * RLS: Providers can view sessions for confirmed workers on their jobs
  */
-export async function getJobLocationSessions(jobId: string): Promise<LocationSharingSession[]> {
+export async function getJobLocationSessions(jobId: string) {
   const { data, error } = await supabase
     .from('location_sharing_sessions')
-    .select('*')
+    .select('*, worker_profiles:profiles!worker_id(full_name, phone_number)')
     .eq('job_id', jobId)
     .eq('sharing_enabled', true)
     .gt('expires_at', new Date().toISOString())
@@ -992,4 +1421,86 @@ export function dbAuditLogToAuditLog(dbRow: AdminAuditLog) {
     details: dbRow.details,
     createdAt: dbRow.created_at
   }
+}
+
+// ============================================================================
+// Deleted Jobs and Recovery Helpers
+// ============================================================================
+
+/**
+ * Get deleted jobs (provider's own or all for admin)
+ * 
+ * @param providerId - Optional provider ID to filter by
+ * @returns Promise<DeletedJob[]>
+ * 
+ * RLS: Providers see only their deleted jobs, admins see all
+ */
+export async function getDeletedJobs(providerId?: string): Promise<DeletedJob[]> {
+  let query = supabase
+    .from('deleted_jobs')
+    .select('*')
+    .order('deleted_at', { ascending: false })
+
+  if (providerId) {
+    query = query.eq('provider_id', providerId)
+  }
+
+  const { data, error } = await query
+
+  if (error) {
+    console.error('Error fetching deleted jobs:', error)
+    return []
+  }
+
+  return data || []
+}
+
+/**
+ * Restore a soft-deleted job
+ * 
+ * @param deletedJobId - ID of the deleted job record
+ * @returns Promise<{ success: boolean; jobId?: string; error?: string }>
+ * 
+ * RLS: Providers can restore their own jobs, admins can restore any
+ */
+export async function restoreJob(deletedJobId: string): Promise<{ success: boolean; jobId?: string; error?: string }> {
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { success: false, error: 'Not authenticated' }
+  }
+
+  const { data, error } = await supabase.rpc('restore_job' as any, {
+    p_deleted_job_id: deletedJobId,
+    p_restored_by: user.id
+  })
+
+  if (error) {
+    console.error('Error restoring job:', error)
+    return { success: false, error: error.message }
+  }
+
+  return { success: true, jobId: data as string }
+}
+
+/**
+ * Permanently delete a job record (admin only)
+ * 
+ * @param deletedJobId - ID of the deleted job record
+ * @returns Promise<boolean>
+ * 
+ * RLS: Admin only via RLS policies
+ */
+export async function permanentlyDeleteJob(deletedJobId: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('deleted_jobs')
+    .delete()
+    .eq('id', deletedJobId)
+
+  if (error) {
+    console.error('Error permanently deleting job:', error)
+    return false
+  }
+
+  return true
 }

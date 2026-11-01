@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import Button from '@/components/common/Button'
 import Input from '@/components/common/Input'
 import { useAuth } from '@/contexts/AuthContext'
+import { useTranslation } from '@/lib/i18n'
 
 interface FormData {
   fullName: string
@@ -25,6 +26,7 @@ interface FormErrors {
 export default function Signup() {
   const navigate = useNavigate()
   const { signUp } = useAuth()
+  const { t } = useTranslation()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
@@ -46,35 +48,35 @@ export default function Signup() {
 
     // Full name
     if (!formData.fullName.trim()) {
-      newErrors.fullName = 'Full name is required'
+      newErrors.fullName = t('validation.fullNameRequired')
     } else if (formData.fullName.trim().length < 2) {
-      newErrors.fullName = 'Full name must be at least 2 characters'
+      newErrors.fullName = t('validation.fullNameMin')
     }
 
     // Phone number (optional but validate format if provided)
     if (formData.phoneNumber.trim() && !/^[\d\s+\-()]+$/.test(formData.phoneNumber)) {
-      newErrors.phoneNumber = 'Invalid phone number format'
+      newErrors.phoneNumber = t('validation.phoneInvalid')
     }
 
     // Email
     if (!formData.email.trim()) {
-      newErrors.email = 'Email is required'
+      newErrors.email = t('validation.emailRequired')
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Invalid email format'
+      newErrors.email = t('validation.emailInvalid')
     }
 
     // Password
     if (!formData.password) {
-      newErrors.password = 'Password is required'
+      newErrors.password = t('validation.passwordRequired')
     } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters'
+      newErrors.password = t('validation.passwordMin')
     }
 
     // Confirm password
     if (!formData.confirmPassword) {
-      newErrors.confirmPassword = 'Please confirm your password'
+      newErrors.confirmPassword = t('validation.confirmPasswordRequired')
     } else if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match'
+      newErrors.confirmPassword = t('validation.passwordsMismatch')
     }
 
     setErrors(newErrors)
@@ -110,15 +112,15 @@ export default function Signup() {
       } else {
         // Handle specific errors
         if (result.error?.includes('already registered') || result.error?.includes('already been registered')) {
-          setError('An account with this email already exists')
+          setError(t('errors.emailExists'))
         } else if (result.error?.includes('Password')) {
           setError(result.error)
         } else {
-          setError(result.error || 'Failed to create account. Please try again.')
+          setError(result.error || t('errors.signUpFailed'))
         }
       }
     } catch (err) {
-      setError('An unexpected error occurred. Please try again.')
+      setError(t('errors.unexpected'))
     } finally {
       setLoading(false)
     }
@@ -126,11 +128,11 @@ export default function Signup() {
 
   return (
     <>
-      <h2 className="text-2xl font-bold text-gray-900 mb-2">Create your account</h2>
+      <h2 className="text-2xl font-bold text-gray-900 mb-2">{t('auth.signUpTitle')}</h2>
       <p className="text-sm text-gray-500 mb-8">
-        Already have an account?{' '}
+        {t('auth.hasAccount')}{' '}
         <Link to="/login" className="text-brand-600 font-medium hover:underline">
-          Sign in
+          {t('auth.signInLink')}
         </Link>
       </p>
 
@@ -150,9 +152,9 @@ export default function Signup() {
 
       <form className="space-y-5" onSubmit={handleSubmit}>
         <Input
-          label="Full name"
+          label={t('auth.fullName')}
           type="text"
-          placeholder="Jane Smith"
+          placeholder={t('auth.fullNamePlaceholder')}
           autoComplete="name"
           value={formData.fullName}
           onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
@@ -161,9 +163,9 @@ export default function Signup() {
         />
 
         <Input
-          label="Phone number (optional)"
+          label={t('auth.phoneOptional')}
           type="tel"
-          placeholder="+1 234 567 8900"
+          placeholder={t('auth.phonePlaceholder')}
           autoComplete="tel"
           value={formData.phoneNumber}
           onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
@@ -171,9 +173,9 @@ export default function Signup() {
         />
 
         <Input
-          label="Email address"
+          label={t('auth.email')}
           type="email"
-          placeholder="you@example.com"
+          placeholder={t('auth.emailPlaceholder')}
           autoComplete="email"
           value={formData.email}
           onChange={(e) => setFormData({ ...formData, email: e.target.value })}
@@ -182,19 +184,19 @@ export default function Signup() {
         />
 
         <Input
-          label="Password"
+          label={t('auth.password')}
           type="password"
           placeholder="••••••••"
           autoComplete="new-password"
           value={formData.password}
           onChange={(e) => setFormData({ ...formData, password: e.target.value })}
           error={errors.password}
-          helperText="At least 6 characters"
+          helperText={t('validation.passwordMin')}
           required
         />
 
         <Input
-          label="Confirm password"
+          label={t('auth.confirmPassword')}
           type="password"
           placeholder="••••••••"
           autoComplete="new-password"
@@ -207,7 +209,7 @@ export default function Signup() {
         {/* Role selection */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-3">
-            I am a... <span className="text-red-500">*</span>
+            {t('auth.selectRole')} <span className="text-red-500">*</span>
           </label>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Worker option */}
@@ -228,10 +230,10 @@ export default function Signup() {
               />
               <div className="flex items-center gap-3 mb-2">
                 <span className="text-2xl">👷</span>
-                <span className="font-semibold text-gray-900">Worker</span>
+                <span className="font-semibold text-gray-900">{t('auth.worker')}</span>
               </div>
               <span className="text-sm text-gray-600">
-                I look for catering jobs and get hired
+                {t('auth.workerDesc')}
               </span>
             </label>
 
@@ -253,17 +255,17 @@ export default function Signup() {
               />
               <div className="flex items-center gap-3 mb-2">
                 <span className="text-2xl">🏢</span>
-                <span className="font-semibold text-gray-900">Provider</span>
+                <span className="font-semibold text-gray-900">{t('auth.provider')}</span>
               </div>
               <span className="text-sm text-gray-600">
-                I post catering jobs and hire workers
+                {t('auth.providerDesc')}
               </span>
             </label>
           </div>
         </div>
 
         <Button type="submit" className="w-full" isLoading={loading}>
-          Create Account
+          {t('auth.createAccount')}
         </Button>
       </form>
     </>

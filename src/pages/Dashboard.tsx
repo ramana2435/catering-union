@@ -80,7 +80,7 @@ export default function Dashboard() {
         {/* Action Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <Link
-            to="/jobs"
+            to="/provider/jobs/new"
             className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
           >
             <div className="text-3xl mb-3">➕</div>
@@ -88,19 +88,23 @@ export default function Dashboard() {
             <p className="text-sm text-gray-600">Create a new catering job posting and hire workers</p>
           </Link>
 
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 opacity-60 cursor-not-allowed">
+          <Link
+            to="/provider/jobs"
+            className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
+          >
             <div className="text-3xl mb-3">📄</div>
             <h3 className="text-lg font-semibold text-gray-900 mb-2">View My Jobs</h3>
             <p className="text-sm text-gray-600">Manage your posted jobs and track their status</p>
-            <p className="text-xs text-gray-500 mt-2 italic">Coming soon</p>
-          </div>
+          </Link>
 
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 opacity-60 cursor-not-allowed">
+          <Link
+            to="/provider/jobs"
+            className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
+          >
             <div className="text-3xl mb-3">👥</div>
             <h3 className="text-lg font-semibold text-gray-900 mb-2">View Applications</h3>
             <p className="text-sm text-gray-600">Review worker applications and confirmations</p>
-            <p className="text-xs text-gray-500 mt-2 italic">Coming soon</p>
-          </div>
+          </Link>
         </div>
       </div>
     )
@@ -163,7 +167,7 @@ export default function Dashboard() {
         {/* Action Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <Link
-            to="/jobs"
+            to="/worker/jobs"
             className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
           >
             <div className="text-3xl mb-3">🔍</div>
@@ -171,18 +175,20 @@ export default function Dashboard() {
             <p className="text-sm text-gray-600">Browse available catering jobs in your area</p>
           </Link>
 
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 opacity-60 cursor-not-allowed">
+          <Link
+            to="/worker/my-jobs"
+            className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
+          >
             <div className="text-3xl mb-3">✅</div>
             <h3 className="text-lg font-semibold text-gray-900 mb-2">My Confirmations</h3>
             <p className="text-sm text-gray-600">View and manage your confirmed jobs</p>
-            <p className="text-xs text-gray-500 mt-2 italic">Coming soon</p>
-          </div>
+          </Link>
 
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 opacity-60 cursor-not-allowed">
             <div className="text-3xl mb-3">📝</div>
             <h3 className="text-lg font-semibold text-gray-900 mb-2">My Attendance</h3>
             <p className="text-sm text-gray-600">Track your attendance and work history</p>
-            <p className="text-xs text-gray-500 mt-2 italic">Coming soon</p>
+            <p className="text-xs text-gray-500 mt-2 italic">Coming in Module 5</p>
           </div>
         </div>
       </div>

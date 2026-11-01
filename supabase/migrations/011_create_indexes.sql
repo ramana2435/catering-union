@@ -49,9 +49,10 @@ CREATE INDEX IF NOT EXISTS idx_worker_attendance_job_status
 -- Already created in 005: idx_location_sessions_job_worker, idx_location_sessions_worker, idx_location_sessions_active
 
 -- Additional index for active sharing sessions
+-- Note: Cannot use NOW() in index predicate (not IMMUTABLE), so we index without time check
 CREATE INDEX IF NOT EXISTS idx_location_sessions_enabled 
-  ON location_sharing_sessions(job_id, sharing_enabled) 
-  WHERE sharing_enabled = TRUE AND (expires_at IS NULL OR expires_at > NOW());
+  ON location_sharing_sessions(job_id, sharing_enabled, expires_at) 
+  WHERE sharing_enabled = TRUE;
 
 -- ============================================================================
 -- Deleted jobs indexes
@@ -59,9 +60,9 @@ CREATE INDEX IF NOT EXISTS idx_location_sessions_enabled
 -- Already created in 006: idx_deleted_jobs_original_id, idx_deleted_jobs_provider, idx_deleted_jobs_expires_at
 
 -- Additional index for non-expired deleted jobs
+-- Note: Cannot use NOW() in index predicate (not IMMUTABLE), so we index expires_at for query filtering
 CREATE INDEX IF NOT EXISTS idx_deleted_jobs_recoverable 
-  ON deleted_jobs(provider_id, deleted_at) 
-  WHERE expires_at IS NULL OR expires_at > NOW();
+  ON deleted_jobs(provider_id, deleted_at, expires_at);
 
 -- ============================================================================
 -- Reports indexes
