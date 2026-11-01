@@ -291,6 +291,7 @@ export interface Database {
           deleted_at: string
           expires_at: string | null
           deletion_reason: string | null
+          job_snapshot: Json
         }
         Insert: {
           id?: string
@@ -300,6 +301,7 @@ export interface Database {
           deleted_at?: string
           expires_at?: string | null
           deletion_reason?: string | null
+          job_snapshot: Json
         }
         Update: {
           id?: string
@@ -309,6 +311,7 @@ export interface Database {
           deleted_at?: string
           expires_at?: string | null
           deletion_reason?: string | null
+          job_snapshot?: Json
         }
         Relationships: [
           {
@@ -410,7 +413,15 @@ export interface Database {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      soft_delete_job: {
+        Args: {
+          p_job_id: string
+          p_deleted_by: string
+          p_deletion_reason: string | null
+          p_expires_days: number
+        }
+        Returns: void
+      }
     }
     Enums: {
       [_ in never]: never

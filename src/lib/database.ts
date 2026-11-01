@@ -779,33 +779,17 @@ export async function softDeleteJob(jobId: string, reason?: string): Promise<boo
     return false
   }
 
-  const { error } = await supabase
-    .from('catering_jobs')
-    .update({
-      deleted_at: new Date().toISOString(),
-      deleted_by: user.id
-    })
-    .eq('id', jobId)
+  // Use the database function for proper soft delete with snapshot
+  const { error } = await supabase.rpc('soft_delete_job', {
+    p_job_id: jobId,
+    p_deleted_by: user.id,
+    p_deletion_reason: reason || null,
+    p_expires_days: 30
+  })
 
   if (error) {
     console.error('Error soft deleting job:', error)
     return false
-  }
-
-  // Optionally create a deleted_jobs record
-  if (reason) {
-    const expiresAt = new Date()
-    expiresAt.setDate(expiresAt.getDate() + 30) // 30 days retention
-
-    await supabase
-      .from('deleted_jobs')
-      .insert({
-        original_job_id: jobId,
-        provider_id: user.id,
-        deleted_by: user.id,
-        deletion_reason: reason,
-        expires_at: expiresAt.toISOString()
-      })
   }
 
   return true
